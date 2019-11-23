@@ -9,7 +9,7 @@ __all__ = [
 
 
 def project_folders(project):
-    return (project or {}).get('folders', {})
+    return (project or {}).get('folders', [])
 
 
 def project_folder(project, path):
@@ -80,19 +80,25 @@ class AliasInputHandler(sublime_plugin.TextInputHandler):
 class AliasFolderCommand(sublime_plugin.WindowCommand):
 
     def is_enabled(self, paths=None):
-        return (paths is None or
-                len(paths) == 1 and
-                is_project_folder(self.window.project_data(), paths[0]))
+        project = self.window.project_data()
+        if not project:
+            return False
+        if not isinstance(paths, list):
+            return True
+        return len(paths) == 1 and is_project_folder(project, paths[0])
 
     def is_visible(self, paths=None):
         return self.is_enabled(paths)
 
     def input(self, args):
         if not args.get('paths'):
-            return PathInputHandler(project_folders(self.window.project_data()))
+            folders = project_folders(self.window.project_data())
+            if folders:
+                return PathInputHandler(folders)
         elif 'alias' not in args:
             folder = project_folder(self.window.project_data(), args['paths'][0])
-            return AliasInputHandler(display_name(folder), folder['path'])
+            if folder:
+                return AliasInputHandler(display_name(folder), folder['path'])
         return None
 
     def run(self, alias, paths=None, _input_path=None):
