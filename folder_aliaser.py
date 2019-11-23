@@ -28,8 +28,10 @@ def display_name(folder):
 
 
 class PathInputHandler(sublime_plugin.ListInputHandler):
+    __slots__ = ('folders')
 
     def __init__(self, folders):
+        super().__init__()
         self.folders = folders
 
     def name(self):
@@ -47,8 +49,10 @@ class PathInputHandler(sublime_plugin.ListInputHandler):
 
 
 class AliasInputHandler(sublime_plugin.TextInputHandler):
+    __slots__ = ('alias', 'path')
 
     def __init__(self, alias, path):
+        super().__init__()
         self.alias = alias
         self.path = Path(path)
 
