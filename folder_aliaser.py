@@ -101,6 +101,9 @@ class AliasFolderCommand(sublime_plugin.WindowCommand):
                 return AliasInputHandler(display_name(folder), folder['path'])
         return None
 
+    def input_description(self):
+        return "Alias:"
+
     def run(self, alias, paths=None, _input_path=None):
         if _input_path is None:
             path = Path(paths[0])
