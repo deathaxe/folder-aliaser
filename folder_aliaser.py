@@ -1,4 +1,4 @@
-from pathlib import Path
+from os.path import basename
 
 import sublime
 import sublime_plugin
@@ -24,10 +24,10 @@ def is_project_folder(project, path):
 
 
 def display_name(folder):
-    return folder.get('name') or Path(folder['path']).name
+    return folder.get('name') or basename(folder['path'])
 
 
-class PathInputHandler(sublime_plugin.ListInputHandler):
+class PathsInputHandler(sublime_plugin.ListInputHandler):
     __slots__ = ('folders')
 
     def __init__(self, folders):
@@ -35,26 +35,26 @@ class PathInputHandler(sublime_plugin.ListInputHandler):
         self.folders = folders
 
     def name(self):
-        return "_input_path"
+        return "paths"
 
     def placeholder(self):
         return "Path"
 
     def list_items(self):
-        return [f"{display_name(folder)}\t{folder['path']}" for folder in self.folders]
+        return [[f"{display_name(folder)}\t{folder['path']}", folder]
+                for folder in self.folders]
 
     def next_input(self, args):
-        alias, path = args['_input_path'].split('\t')
-        return AliasInputHandler(alias, path)
+        return AliasInputHandler(args['paths'])
 
 
 class AliasInputHandler(sublime_plugin.TextInputHandler):
     __slots__ = ('alias', 'path')
 
-    def __init__(self, alias, path):
+    def __init__(self, folder):
         super().__init__()
-        self.alias = alias
-        self.path = Path(path)
+        self.alias = display_name(folder)
+        self.path = folder['path']
 
     def name(self):
         return "alias"
@@ -67,7 +67,7 @@ class AliasInputHandler(sublime_plugin.TextInputHandler):
 
     def preview(self, new_alias):
         if not new_alias:
-            new_alias = self.path.name
+            new_alias = basename(self.path)
 
         if new_alias != self.alias:
             hint = f"Change display name from <u>{self.alias}</u> to <u>{new_alias}</u>"
@@ -94,26 +94,27 @@ class AliasFolderCommand(sublime_plugin.WindowCommand):
         if not args.get('paths'):
             folders = project_folders(self.window.project_data())
             if folders:
-                return PathInputHandler(folders)
+                return PathsInputHandler(folders)
         elif 'alias' not in args:
             folder = project_folder(self.window.project_data(), args['paths'][0])
             if folder:
-                return AliasInputHandler(display_name(folder), folder['path'])
+                return AliasInputHandler(folder)
         return None
 
     def input_description(self):
         return "Alias:"
 
-    def run(self, alias, paths=None, _input_path=None):
-        if _input_path is None:
-            path = Path(paths[0])
+    def run(self, alias, paths=[]):
+        # The PathsInputHandler returns the folder object from the project
+        # (e.g.: {'name': 'foo', 'path': '/mnt/c/path'})
+        if isinstance(paths, dict):
+            path = paths['path']
         else:
-            path = Path(_input_path.split('\t')[1])
-
+            path = paths[0]
         project = self.window.project_data()
-        folder = project_folder(project, str(path))
+        folder = project_folder(project, path)
         if folder:
-            if alias in ('', path.name):
+            if alias in ('', basename(path)):
                 folder.pop('name', None)
             else:
                 folder['name'] = alias
